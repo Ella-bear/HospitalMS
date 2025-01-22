@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- Remove custom CSS since we're using Tailwind -->
+{% endblock %}
+
+{% block nav_items %}
+<a href="#appointments" class="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors">My Appointments</a>
+<a href="#doctors" class="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors">Doctors</a>
+<a href="#profile" class="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors">My Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">
+        <script>
+            const hour = new Date().getHours();
+            let greeting = '';
+            if (hour < 12) greeting = 'Good Morning';
+            else if (hour < 18) greeting = 'Good Afternoon';
+            else greeting = 'Good Evening';
+            const username = "{{ session['username'] }}";
+            const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+            document.write(`${greeting}, ${capitalizedUsername}!`);
+        </script>
+    </h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Appointments Card -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Upcoming Appointments</h2>
+            <div id="upcoming-appointments" class="mb-4">
+                <div class="animate-pulse flex space-x-4">
+                    <div class="flex-1 space-y-4 py-1">
+                        <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div class="space-y-2">
+                            <div class="h-4 bg-gray-200 rounded"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="showBookAppointment()" class="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Book New Appointment
+            </button>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">My Profile</h2>
+            <div id="patient-profile" class="space-y-3">
+                <div class="animate-pulse flex space-x-4">
+                    <div class="flex-1 space-y-4 py-1">
+                        <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div class="space-y-2">
+                            <div class="h-4 bg-gray-200 rounded"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="showEditProfile()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Edit Profile
+            </button>
+        </div>
+    </div>
+
+    <!-- Doctors Table -->
+    <div class="bg-white rounded-lg shadow-md p-6 overflow-x-auto">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Available Doctors</h2>
+        <table id="doctors-table" class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="4" class="px-6 py-4">
+                    <div class="animate-pulse flex space-x-4">
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            <div class="h-4 bg-gray-200 rounded w-full"></div>
+                            <div class="h-4 bg-gray-200 rounded w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Appointment Modal -->
+<div id="appointmentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full">
+    <div class="relative top-[50%] -translate-y-1/2 h-max mx-auto p-5 border shadow-lg rounded-md bg-white mx-2">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Book Appointment</h2>
+            <button onclick="hideBookAppointment()" class="text-gray-400 hover:text-gray-600">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <form id="appointmentForm" class="space-y-4">
+            <div>
+                <label for="doctor" class="block text-sm font-medium text-gray-700">Doctor:</label>
+                <select id="doctor" name="doctor_id" required class="mt-1 p-2 block w-full rounded-md border-[1px] bg-white border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select a doctor</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="appointment_date" class="block text-sm font-medium text-gray-700">Date and Time:</label>
+                <input type="datetime-local" id="appointment_date" name="appointment_date" required 
+                       class="mt-1 block w-full p-2 rounded-md border-[1px] bg-white border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Description:</label>
+                <textarea id="description" name="description" rows="3" required 
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            
+            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Book Appointment
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full">
+    <div class="relative top-[50%] -translate-y-1/2 h-max mx-auto p-5 border shadow-lg rounded-md bg-white mx-2 max-w-md">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Edit Profile</h2>
+            <button onclick="hideEditProfile()" class="text-gray-400 hover:text-gray-600">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <form id="editProfileForm" class="space-y-4">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
+                <input type="text" id="edit_name" name="name" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label for="age" class="block text-sm font-medium text-gray-700">Age:</label>
+                <input type="number" id="edit_age" name="age" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label for="gender" class="block text-sm font-medium text-gray-700">Gender:</label>
+                <select id="edit_gender" name="gender" required 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700">Phone:</label>
+                <input type="tel" id="edit_phone" name="phone" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label for="address" class="block text-sm font-medium text-gray-700">Address:</label>
+                <textarea id="edit_address" name="address" rows="2" required 
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            
+            <div>
+                <label for="medical_history" class="block text-sm font-medium text-gray-700">Medical History:</label>
+                <textarea id="edit_medical_history" name="medical_history" rows="3" 
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border-[1px] p-2 focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            
+            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize variables from server-side data
+    const patientData = {
+        userId: JSON.parse('{{ session["user_id"]|tojson|safe }}'),
+        patientId: null
+    };
+
+    // First get the patient ID for the logged-in user
+    async function initializePatient() {
+        try {
+            const response = await fetch(`/patient/${patientData.userId}`);
+            const data = await response.json();
+            if (response.ok) {
+                patientData.patientId = data.id;
+                loadAppointments();
+                loadPatientProfile();
+            } else {
+                console.error('Failed to get patient data:', data.message);
+                alert('Error loading patient data. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error loading patient data. Please try again.');
+        }
+    }
+
+    // Fetch upcoming appointments
+    function loadAppointments() {
+        if (!patientData.patientId) return;
+        
+        fetch(`/appointment?patient_id=${patientData.patientId}`)
+            .then(response => response.json())
+            .then(data => {
+                const upcomingAppointments = data
+                    .filter(apt => new Date(apt.appointment_date) > new Date())
+                    .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date))
+                    .slice(0, 4);
+                
+                document.getElementById('upcoming-appointments').innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${upcomingAppointments.length ? 
+                                    upcomingAppointments.map(apt => `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(apt.appointment_date).toLocaleString()}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.doctor_name}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.description}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                    apt.status === 'Scheduled' ? 'bg-green-100 text-green-800' :
+                                                    apt.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }">
+                                                    ${apt.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('') :
+                                    '<tr><td colspan="4" class="px-6 py-4 text-sm text-gray-500 text-center">No upcoming appointments</td></tr>'
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                console.error('Error loading appointments:', error);
+                document.getElementById('upcoming-appointments').innerHTML = 
+                    '<div class="text-red-500 text-center py-4">Error loading appointments. Please refresh the page.</div>';
+            });
+    }
+
+    // Load patient profile
+    function loadPatientProfile() {
+        if (!patientData.patientId) return;
+        
+        fetch(`/patient/${patientData.patientId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('patient-profile').innerHTML = `
+                    <p><strong>Name:</strong> ${data.name}</p>
+                    <p><strong>Age:</strong> ${data.age}</p>
+                    <p><strong>Gender:</strong> ${data.gender}</p>
+                    <p><strong>Phone:</strong> ${data.phone}</p>
+                    <p><strong>Address:</strong> ${data.address}</p>
+                    <p><strong>Medical History:</strong> ${data.medical_history}</p>
+                `;
+            })
+            .catch(error => {
+                console.error('Error loading profile:', error);
+                document.getElementById('patient-profile').innerHTML = 
+                    'Error loading profile. Please refresh the page.';
+            });
+    }
+    
+    // Load doctors for appointment booking
+    function loadDoctors() {
+        fetch('/doctor')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    const doctorSelect = document.getElementById('doctor');
+                    doctorSelect.innerHTML = '<option value="">Select a doctor</option>';
+                    
+                    data.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.id;
+                        option.textContent = `${doctor.name} - ${doctor.specialization}`;
+                        doctorSelect.appendChild(option);
+                    });
+
+                    const doctorsTable = document.getElementById('doctors-table');
+                    doctorsTable.innerHTML = `
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${data.map(doctor => `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doctor.name || ''}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doctor.specialization || ''}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doctor.schedule || ''}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <button onclick="showBookAppointment(${doctor.id})" 
+                                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            Book Appointment
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    `;
+                } else {
+                    console.error('Invalid doctor data received:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading doctors:', error);
+                document.getElementById('doctors-table').innerHTML = `
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-sm text-red-500 text-center">
+                                Error loading doctors. Please try again later.
+                            </td>
+                        </tr>
+                    </tbody>
+                `;
+            });
+    }
+    function showBookAppointment(doctorId = null) {
+        document.getElementById('appointmentModal').style.display = 'block';
+        if (doctorId) {
+            document.getElementById('doctor').value = doctorId;
+        }
+    }
+
+    function hideBookAppointment() {
+        document.getElementById('appointmentModal').style.display = 'none';
+    }
+
+    // Handle appointment form submission
+    document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!patientData.patientId) {
+            alert('Patient data not loaded. Please refresh the page.');
+            return;
+        }
+
+        const formData = {
+            patient_id: patientData.patientId,
+            doctor_id: parseInt(document.getElementById('doctor').value),
+            appointment_date: document.getElementById('appointment_date').value,
+            description: document.getElementById('description').value,
+            status: 'Scheduled'
+        };
+
+        try {
+            const response = await fetch('/appointment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                hideBookAppointment();
+                loadAppointments();
+                alert('Appointment booked successfully!');
+                e.target.reset();
+            } else {
+                alert(data.message || 'Failed to book appointment');
+            }
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            alert('Error booking appointment. Please try again.');
+        }
+    });
+
+    // Modal functions
+    function showBookAppointment(doctorId = null) {
+        document.getElementById('appointmentModal').style.display = 'block';
+        if (doctorId) {
+            document.getElementById('doctor').value = doctorId;
+        }
+    }
+
+    function hideBookAppointment() {
+        document.getElementById('appointmentModal').style.display = 'none';
+    }
+
+    // Initial load
+    initializePatient();
+    loadDoctors();
+
+    // Add these functions inside the existing <script> tag
+    function showEditProfile() {
+        const modal = document.getElementById('editProfileModal');
+        modal.style.display = 'block';
+        
+        // Pre-fill the form with current profile data
+        fetch(`/patient/${patientData.patientId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('edit_name').value = data.name || '';
+                document.getElementById('edit_age').value = data.age || '';
+                document.getElementById('edit_gender').value = data.gender || '';
+                document.getElementById('edit_phone').value = data.phone || '';
+                document.getElementById('edit_address').value = data.address || '';
+                document.getElementById('edit_medical_history').value = data.medical_history || '';
+            })
+            .catch(error => {
+                console.error('Error loading profile data:', error);
+                alert('Error loading profile data. Please try again.');
+                hideEditProfile();
+            });
+    }
+
+    function hideEditProfile() {
+        document.getElementById('editProfileModal').style.display = 'none';
+    }
+
+    // Add this event listener with your other initialization code
+    document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!patientData.patientId) {
+            alert('Patient data not loaded. Please refresh the page.');
+            return;
+        }
+
+        const formData = {
+            name: document.getElementById('edit_name').value,
+            age: parseInt(document.getElementById('edit_age').value),
+            gender: document.getElementById('edit_gender').value,
+            phone: document.getElementById('edit_phone').value,
+            address: document.getElementById('edit_address').value,
+            medical_history: document.getElementById('edit_medical_history').value
+        };
+
+        try {
+            const response = await fetch(`/patient/${patientData.patientId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                hideEditProfile();
+                loadPatientProfile();
+                alert('Profile updated successfully!');
+                e.target.reset();
+            } else {
+                alert(data.message || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Error updating profile. Please try again.');
+        }
+    });
+</script>
+{% endblock %} 

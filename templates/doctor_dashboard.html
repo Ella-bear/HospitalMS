@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+
+{% block nav_items %}
+<a href="#appointments" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Today's Appointments</a>
+<a href="#upcoming" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Upcoming Appointments</a>
+<a href="#profile" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">
+        <script>
+            const hour = new Date().getHours();
+            let greeting = '';
+            if (hour < 12) greeting = 'Good Morning';
+            else if (hour < 18) greeting = 'Good Afternoon';
+            else greeting = 'Good Evening';
+            const username = "{{ session['username'] }}";
+            const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+            document.write(`${greeting}, ${capitalizedUsername}!`);
+        </script>
+    </h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Today's Appointments</h2>
+            <div id="today-appointments" class="overflow-x-auto">
+                <p class="text-gray-600">
+                    <div class="animate-pulse flex space-x-4">
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </p>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Doctor Profile</h2>
+            <div id="doctor-profile" class="space-y-3">
+                <p class="text-gray-600">
+                    <div class="animate-pulse flex space-x-4">
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Upcoming Appointments</h2>
+        <div id="upcoming-appointments" class="overflow-x-auto">
+            <p class="text-gray-600">
+                <div class="animate-pulse flex space-x-4">
+                    <div class="flex-1 space-y-4 py-1">
+                        <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div class="space-y-2">
+                            <div class="h-4 bg-gray-200 rounded"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Prescription Modal -->
+<div id="prescriptionModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border shadow-lg rounded-md bg-white mx-2">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Write Prescription</h2>
+            <button onclick="hidePrescriptionModal()" class="text-gray-500 hover:text-gray-700">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="prescriptionForm" class="space-y-4">
+            <input type="hidden" id="appointment_id" name="appointment_id">
+            <div>
+                <label for="medication" class="block text-sm font-medium text-gray-700">Medication:</label>
+                <input type="text" id="medication" name="medication" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="dosage" class="block text-sm font-medium text-gray-700">Dosage:</label>
+                <input type="text" id="dosage" name="dosage" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="instructions" class="block text-sm font-medium text-gray-700">Instructions:</label>
+                <textarea id="instructions" name="instructions" rows="3"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            <button type="submit" 
+                class="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Save Prescription
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const doctorData = {
+        userId: {{ session['user_id']|tojson }},
+        doctorId: null
+    };
+
+    // Initialize doctor data
+    async function initializeDoctor() {
+        try {
+            const response = await fetch(`/doctor/${doctorData.userId}`);
+            const data = await response.json();
+            if (response.ok) {
+                doctorData.doctorId = data.id;
+                displayDoctorProfile(data);
+                loadTodayAppointments();
+                loadUpcomingAppointments();
+            }
+        } catch (error) {
+            console.error('Error initializing doctor data:', error);
+            document.getElementById('doctor-profile').innerHTML = 
+                'Error loading doctor profile. Please refresh the page.';
+        }
+    }
+
+    function displayDoctorProfile(doctorData) {
+        document.getElementById('doctor-profile').innerHTML = `
+            <p class="text-gray-700"><span class="font-semibold">Name:</span> ${doctorData.name}</p>
+            <p class="text-gray-700"><span class="font-semibold">Specialization:</span> ${doctorData.specialization}</p>
+            <p class="text-gray-700"><span class="font-semibold">Phone:</span> ${doctorData.phone}</p>
+            <p class="text-gray-700"><span class="font-semibold">Address:</span> ${doctorData.address}</p>
+            <p class="text-gray-700"><span class="font-semibold">Schedule:</span> ${doctorData.schedule}</p>
+        `;
+    }
+
+    function loadTodayAppointments() {
+        if (!doctorData.doctorId) return;
+
+        fetch(`/appointment?doctor_id=${doctorData.doctorId}`)
+            .then(response => response.json())
+            .then(data => {
+                const today = new Date().toISOString().split('T')[0];
+                const todayAppointments = data.filter(apt => 
+                    apt.appointment_date.startsWith(today)
+                );
+                
+                document.getElementById('today-appointments').innerHTML = `
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${todayAppointments.length ? todayAppointments.map(apt => `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(apt.appointment_date).toLocaleTimeString()}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.patient_name}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.description}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.status}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button onclick="showPrescriptionModal(${apt.id})" 
+                                                ${apt.status !== 'Scheduled' ? 'disabled' : ''}
+                                                class="text-blue-600 hover:text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Prescribe
+                                        </button>
+                                        <button onclick="updateStatus(${apt.id}, 'Completed')" 
+                                                ${apt.status !== 'Scheduled' ? 'disabled' : ''}
+                                                class="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Complete
+                                        </button>
+                                        <button onclick="updateStatus(${apt.id}, 'Cancelled')" 
+                                                ${apt.status !== 'Scheduled' ? 'disabled' : ''}
+                                                class="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Cancel
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No appointments for today</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+            })
+            .catch(error => {
+                console.error('Error loading appointments:', error);
+                document.getElementById('today-appointments').innerHTML = 
+                    '<p class="text-red-500">Error loading appointments. Please refresh the page.</p>';
+            });
+    }
+
+    function loadUpcomingAppointments() {
+        if (!doctorData.doctorId) return;
+
+        fetch(`/appointment?doctor_id=${doctorData.doctorId}`)
+            .then(response => response.json())
+            .then(data => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const upcomingAppointments = data
+                    .filter(apt => new Date(apt.appointment_date) > today)
+                    .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date))
+                    .slice(0, 4); // Show next 4 upcoming appointments
+                
+                document.getElementById('upcoming-appointments').innerHTML = `
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${upcomingAppointments.length ? upcomingAppointments.map(apt => {
+                                const appointmentDate = new Date(apt.appointment_date);
+                                return `
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${appointmentDate.toLocaleDateString()}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${appointmentDate.toLocaleTimeString()}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.patient_name}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.description}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${apt.status}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <button onclick="updateStatus(${apt.id}, 'Cancelled')" 
+                                                    ${apt.status !== 'Scheduled' ? 'disabled' : ''}
+                                                    class="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                Cancel
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('') : '<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No upcoming appointments</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+            })
+            .catch(error => {
+                console.error('Error loading upcoming appointments:', error);
+                document.getElementById('upcoming-appointments').innerHTML = 
+                    '<p class="text-red-500">Error loading upcoming appointments. Please refresh the page.</p>';
+            });
+    }
+
+    function updateStatus(appointmentId, status) {
+        if (status === 'Cancelled' && !confirm('Are you sure you want to cancel this appointment?')) {
+            return;
+        }
+
+        fetch(`/appointment/${appointmentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(() => {
+            loadTodayAppointments();
+            loadUpcomingAppointments();
+            if (status === 'Cancelled') {
+                alert('Appointment cancelled successfully');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating appointment:', error);
+            alert(`Failed to ${status.toLowerCase()} appointment`);
+        });
+    }
+
+    function showPrescriptionModal(appointmentId) {
+        document.getElementById('appointment_id').value = appointmentId;
+        document.getElementById('prescriptionModal').style.display = 'block';
+    }
+
+    function hidePrescriptionModal() {
+        document.getElementById('prescriptionModal').style.display = 'none';
+        document.getElementById('prescriptionForm').reset();
+    }
+
+    // Handle prescription form submission
+    document.getElementById('prescriptionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            appointment_id: parseInt(document.getElementById('appointment_id').value),
+            medication: document.getElementById('medication').value,
+            dosage: document.getElementById('dosage').value,
+            instructions: document.getElementById('instructions').value
+        };
+
+        try {
+            const response = await fetch('/prescription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                hidePrescriptionModal();
+                loadTodayAppointments();
+                loadUpcomingAppointments();
+                alert('Prescription saved successfully!');
+            } else {
+                alert(data.message || 'Failed to save prescription');
+            }
+        } catch (error) {
+            console.error('Error saving prescription:', error);
+            alert('Error saving prescription. Please try again.');
+        }
+    });
+
+    // Initial load
+    initializeDoctor();
+</script>
+{% endblock %} 

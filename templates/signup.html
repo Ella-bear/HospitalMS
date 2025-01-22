@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .message-animate {
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+            transform: translateX(100%);
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            color: black;
+            padding: 1rem .8rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 0 5px rgba(81, 81, 81, 0.103);
+            border: 1px solid #e0e0e0;
+            z-index: 50;
+            min-width: 200px;
+        }
+        
+        .message-animate.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @media (max-width: 768px) {
+            .message-animate {
+                left: 20px;
+                right: 20px;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen w-full p-6">
+    <div class="flex flex-col w-full max-w-md mx-auto">
+        <img src="{{ url_for('static', filename='images/Logo.png') }}" 
+             alt="Medilink Logo" 
+             class="w-20 h-20 mx-auto absolute top-6 left-[50%] -translate-x-[50%]">
+        <h2 class="text-2xl font-bold mb-6">Create Account</h2>
+        
+        <form id="signupForm" class="flex flex-col space-y-4">
+            <div class="form-group">
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username:</label>
+                <input type="text" 
+                       id="username" 
+                       name="username" 
+                       required
+                       autocapitalize="none"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent">
+            </div>
+            
+            <div class="form-group">
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email:</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent">
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password:</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent">
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password:</label>
+                <input type="password" 
+                       id="confirm_password" 
+                       name="confirm_password" 
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent">
+            </div>
+
+            <div class="form-group">
+                <label for="user_type" class="block text-sm font-medium text-gray-700 mb-1">I am a:</label>
+                <select id="user_type" 
+                        name="user_type" 
+                        required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent">
+                    <option value="">Select user type</option>
+                    <option value="patient">Patient</option>
+                    <option value="doctor">Doctor</option>
+                </select>
+            </div>
+            
+            <button type="submit" 
+                    class="bg-green-800 text-white px-4 py-2 rounded-md w-full hover:bg-green-700 transition-colors duration-200">
+                Create Account
+            </button>
+            
+            <a href="/login" class="text-center py-2 text-sm">
+                Already have an account? 
+                <span class="text-green-800 hover:text-green-700">Login</span>
+            </a>
+        </form>
+        <div id="message" class="message-animate text-black"></div>
+    </div>
+
+    <script>
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageEl = document.getElementById('message');
+            
+            // Basic validation
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (password !== confirmPassword) {
+                messageEl.textContent = "Passwords do not match";
+                messageEl.classList.add('show');
+                setTimeout(() => {
+                    messageEl.classList.remove('show');
+                }, 5000);
+                return;
+            }
+            
+            messageEl.classList.remove('show');
+            
+            try {
+                const formData = {
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password: password,
+                    user_type: document.getElementById('user_type').value
+                };
+
+                console.log('Sending signup request to /signup');
+                console.log('Request data:', {...formData, password: '****'});
+
+                const response = await fetch('/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(formData)
+                });
+                
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    throw new Error('Received non-JSON response from server');
+                }
+                
+                console.log('Response status:', response.status);
+                console.log('Server response:', data);
+                
+                if (response.ok) {
+                    messageEl.textContent = "Account created successfully! Redirecting to login...";
+                    messageEl.classList.add('show');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    messageEl.textContent = data.message || "An error occurred during signup. Please try again.";
+                    messageEl.classList.add('show');
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                messageEl.textContent = "An error occurred. Please try again. Error: " + error.message;
+                messageEl.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html> 
