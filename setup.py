@@ -6,7 +6,6 @@ setup(
     packages=['package'],
     url='',
     license='',
-    author='Tushar',
-    author_email='tusharborole@ourmail.com',
+    author='Sheila',
     description='Simple Hospital Management System Project'
 )
